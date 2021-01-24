@@ -1,0 +1,328 @@
+---
+title: "reliability"
+output:
+  bookdown::html_document2:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+    df_print: paged
+    fig_width: 8
+    fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+options(digits = 4, scipen = 999)
+set.seed(33333)
+```
+
+```{r}
+library(tidyverse)
+library(psych)
+library(lavaan)
+library(e1071) # kurtosis  
+```
+
+
+# Data 
+I am using the data set from `psych()` package.   
+```{r rows.print = 10}
+(big5 = psych::bfi)
+```
+
+# Assumptions  
+For an accurate estimation of Cronbach's alpha, four assumptions should be met:   
+1) [**tau equivalence**](#tau-equivalence)   
+- all items of a scale should measure the same construct to the same degree of precision.   
+- Although the violation leads to *under*estimation of Cronbach's alpha (Green & Yang, 2009), whether the degree of underestimation is significant is debated (Savalei & Reise, 2019).     
+2) [**normal distribution**](#continuous)   
+- items need to be continuous and normally distributed.   
+- The violation of continuous scale leads to *under*estimation of Cronbach's alpha, whereas leptokurtic and platykurtic distributions lead to *under* and *over*estimation, respectively (Sheng & Sheng, 2012).        
+3) [**uncorrelted error terms**](#uncor-errors)   
+- error terms of items need to be uncorrelated.   
+- Correlated error terms can lead to *under* and *over*estimation (Gessaroli & Folske, 2002).   
+4) [**unidimensionality**](#unidimension)    
+- all items need to measure the same construct.   
+- Cronbach's alpha does not measure the degree of unidimensionality; unidimensionality needs to verified prior to calculating Cronbach's alpha.  
+
+## **tau equivalence** {#tau-equivalence}  
+Does each item contribute equally to the total scale score?  
+
+Let's inspect standardized factor loadings (in the ML1 column).  
+```{r}
+c("A", "C", "E", "N", "O") %>% 
+  map(., ~{select(big5, num_range(., 1:5)) %>% 
+      psych::fa(nfactors = 1, fm = "ml") %>% 
+      psych::print.psych()})
+```
+
+The factor loadings under the ML1 column indicate a *congeneric model* (i.e., items contribute unequally to the scale) for all five traits. In fact, one of the openness items (O4) has a factor loading of .30, which is substantially lower than that of O3 with .65.        
+
+## **continuous items with normal distributions** {#continuous}    
+One of the assumptions of Pearson covariance matrices is that all items are continuous. The violation of this assumption leads to the underestimation of Cronbach's alpha.    
+
+All items were rated on a 6-point Likert type scale, which does not meet the suggested cutoff of 7-point scale (Gadermann et al., 2012) to be treated as continuous. As such, the covariances can be estimated with a polychoric covariance matrix, which accommodates non-continuous items that are normally distributed.  
+<br></br>
+In addition to being continuous, items need to be normally distributed. We can inspect whether the items are normally distributed using `kurtosis()` and `skewness()` function from `e1071` package. 
+
+```{r}
+big5 %>% 
+  # compute kurtosis and skewness of each item  
+  summarize_all(list(kurtosis = e1071::kurtosis,
+                     skewness = e1071::skewness), na.rm = TRUE) %>% 
+  # organizing the output to be human-friendly  
+  pivot_longer(cols = everything(),
+               names_to = c("item", "stats"),
+               values_to = "value",
+               names_pattern = "(\\w[1-5])_(.*)") %>% 
+  drop_na() %>% 
+  pivot_wider(id_cols = item,
+              names_from = stats,
+              values_from = value) %>% 
+  # flag nonnormality (i.e., greater than 1) with ** 
+  mutate(across(where(is.double), ~ifelse(abs(.) > 1, paste0(round(., 2), "**"), round(., 2))))
+
+```
+We see a lot of items (e.g., all neuroticism items) are platykurtic, which may lead to overestimation of Cronbach's alpha (Sheng & Sheng, 2012).    
+
+## **uncorrelated errors** {#uncor-errors}    
+Error terms need to be uncorrelated. Unaccounted correlated error terms lead to overestimatin of Cronbach's alpha (Gessaroli & Folske, 2002).  
+
+Let's inspect error terms for each trait.  
+```{r}
+c("A", "C", "E", "N", "O") %>% 
+  map(., ~{select(big5, num_range(., 1:5)) %>% 
+      psych::fa(nfactors = 1, fm = "ml") %>% 
+      residuals}) 
+```
+We see that the error terms of A1 and A2, C1 and C2, E3 and E5, N4 and N5, and O2 and O5 are correlated at $r$ = .09 or higher.     
+
+## **unidimensionality** {#unidimension}   
+A scale needs to be unidimensional; that is, all items of the scale need to measure the same underlying construct (Schmitt, 1996). This assumption of unidimensionality needs to be verified *prior* to calculating Cronbach's alpha, which can be done by inspecting the factor structure and fitting one-factor model.   
+
+Importance of this assumption is highlighted by Flora (2020) and Savalei & Reise (2018), which argue better modeling to decide the most appropriate reliability coefficient. How we can go about doing this will be revisited later with [an example](#better-modeling).     
+  
+# Potential Solutions  
+To the extent that scales rarely meet all four assumptions listed above, what would be a potential solution?  
+
+## Use aternative reliability coefficients       
+McNeish (2018) recommends using alternative reliability coefficients that make fewer assumptions.    
+
+| Reliability | tau equivalence  |  continuous | uncorrelated errors | unidimensionality |
+|-------------|:-------------:|:------:|:------:|:------:|
+| alpha       | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ |
+| omega total |  | $\checkmark$ |  | $\checkmark$ |
+| Revelle's omega total |  | $\checkmark$ | $\checkmark$ |  |
+| Coefficient H |  | $\checkmark$ |  |  |
+| Greatest Lower Bound |  | $\checkmark$ |  |  |
+
+
+### alpha  
+Calculating Cronbach's alpha for each trait by first reverse-scoring items[^1] that are negatively worded. We will be using `alpha()` function from `psych` package.    
+[^1]: Reverse-scored items include A1, C4, C5, E1, E2, O2, O5  
+```{r}
+# creating a custom function that will automatically reverse score items, select items for each scale, and compute Cronbach's alpha.  
+cronbachs_alpha <- function(data, trait) {
+  data %>% 
+    # reverse scoring items that are negatively worded 
+    mutate_at(vars(c("A1", "C4", "C5", "E1", "E2", "O2", "O5")), ~{7 - .}) %>% 
+    # selecting items for each trait
+    select(num_range(trait, 1:5)) %>% 
+    # compute alpha 
+    psych::alpha(check.keys = TRUE) # check.keys argument will automatically reverse-score items  
+}
+```
+The estimates of Cronbach's alpha can be found under `std.alpha` column.  
+```{r}
+c("A", "C", "E", "N", "O") %>% 
+  map(., ~cronbachs_alpha(big5, .)) %>%
+  map_dfr("total", .id = "trait") %>% 
+  # giving each row the name of the trait 
+  mutate(trait = c("A", "C", "E", "N", "O")) %>% 
+  select(trait, std.alpha)
+```
+Using the rule of thumb (Nunnally, 1978), all but neuroticism have *inadequate* internal reliabilities.   
+```{r eval = FALSE}
+# For a practical example computing alpha for one scale, as opposed to 5 as shown above. 
+big5 %>% 
+  select(num_range("N", 1:5)) %>% 
+  psych::alpha(check.keys = TRUE)
+```
+
+
+### Omega   
+For congeneric scales with items varying in factor loadings, we can compute omega instead. Note that the assumption of unidimensionality still needs to be met for omega total.      
+
+We are using `ci.reliability()` function from `MBESS` package, which will produce point estimates and 95% confidence interval using bootstrapped samples. As bootstrapping takes computational power & time, we will be only using neuroticism scale.     
+
+```{r cache = TRUE}
+# tictoc::tic()
+big5 %>% 
+  # selecting neuroticism items only 
+  select(num_range("N", 1:5)) %>% 
+  MBESS::ci.reliability(data = .,
+                        type = "omega",
+                        interval.type = "perc", # percentile bootstrap CI
+                        B = 100)  # bootstrap samples set to 100
+# tictoc::toc() # this takes 30 seconds on my computer   
+```
+We get $\omega$ total of .81 with a 95% CI of [.80, 0.83] using the random seed of 33333[^2].   
+[^2]: 95% CI may be different if you are not using this seed.   
+
+### Revelle's omega total   
+This is an extension of omega total with a rotation solution to a bifactor model with one superordinate factor and one minor factor.   
+
+
+```{r}
+# install.packages("GPArotation")
+# the following package is required for the rotation; uncomment the line above if you don't have the package installed. 
+library(GPArotation)
+
+# We will only compute Revelle's omega total for neuroticism.  
+big5 %>% 
+  select(num_range("N", 1:5)) %>% 
+  psych::omega(plot = FALSE)
+```
+We get Revelle's omega total of .85 and omega hierarchical is .73, which is lower. These two differ in the variances that count towards a reliability estimate; whereas Revelle's omega total accounts for the variances due to to *all* the factors (i.e., general and specific factors), omega hierarchical accounts for the general/superordinate factor without specific factor(s) that represent :irrelevant sources of variability" (see Savalei & Reise, 2019).    
+<br></br>
+The function offers an option to estimate polychoric covariance matrix, which will account for non-continuous items. 
+```{r}
+ big5 %>% 
+  select(num_range("N", 1:5)) %>% 
+  psych::omega(plot = FALSE,
+               poly = TRUE) # estimating polychoric covariance matrix 
+```
+We see that omega estimates are higher when using polychoric covariance matrix; however, note that using polychoric covariance matrix for ordinal items can be problematic (Chalmers, 2018; Green & Yang, 2009).  
+
+### Coefficient H    
+This is maximal reliability estimate for scales with *optimally weighted* items. 
+
+We first need to repeat the procedure we used to check the assumption of tau equivalence: conducting an exploratory factor analysis. We then use standardized loadings to compute Coefficient H.   
+```{r}
+c("A", "C", "E", "N", "O") %>% 
+  map_dfr(., ~{select(big5, num_range(., 1:5)) %>% 
+      psych::fa(nfactors = 1, fm = "ml") %>% 
+      loadings() %>% 
+      unclass() %>% 
+      as.data.frame() %>% 
+      # calculate Coefficient H 
+      summarize(coefficient_h = (1 + (sum( (ML1^2) / (1 - ML1^2) )^-1) )^-1)}, .id = "traits") %>% 
+  mutate(traits = c("A", "C", "E", "N", "O"))
+```
+
+```{r}
+# We can use neuroticism items only for simplicity. 
+big5 %>% 
+  # selecting neuroticism items
+  select(num_range("N", 1:5)) %>% 
+  # exploratory factor analysis
+  psych::fa(nfactors = 1, fm = "ml") %>% 
+  loadings() %>% 
+  unclass() %>% 
+  as.data.frame() %>% 
+  # calculate Coefficient H 
+  summarize(coefficient_h = (1 + (sum( (ML1^2) / (1 - ML1^2) )^-1) )^-1)
+
+```
+We get $Coefficient H$ of .85 for neuroticism.  
+
+### Greatest lower bound 
+
+Compute the greatest lower bound with the polychoric matrix estimation.  
+```{r}
+big5 %>% 
+  select(num_range("N", 1:5)) %>%
+  # obtain polychoric correlation matrix 
+  psych::polychoric() %>% 
+  .$rho %>% 
+  data.frame() %>% 
+  # compute the greatest lower bound
+  psych::glb.fa()
+```
+We see that the greatest lower bound of .87 is higher than the alpha and omega estimates.  
+
+## Better Modeling {#better-modeling}    
+Instead of using an alternative reliabiility coefficient, Savalei and Reise (2019) recommends better modeling: Careful inspection of underlying factor structure and selection of reliability coefficient based on the model.     
+
+Following the example in Flora (2020), we provide an working example of what that might look like.    
+
+Let's estimate one-factor model for the neuroticism scale.  
+```{r neuroticism_model}
+# one-factor model
+neuroticism_model <- 'N =~ N1 + N2 + N3 + N4 + N5'
+```
+
+We fit the one-factor model to our data with `cfa()` function from the `lavvan package`.   
+```{r}
+neuroticism_fit = lavaan::cfa(neuroticism_model, # one-factor model specified as above
+                      data = big5, 
+                      missing = "direct", # handled with ML estimation 
+                      std.lv = TRUE, # fixing the variance of neuroticism to 1 
+                      estimator = "MLR") # maximum likelihood estimation with robust model-fit statistics
+```
+
+Let's inspect the fit indices of the one-factor model. 
+```{r}
+broom::glance(neuroticism_fit)
+```
+CFI of .92 indicates an adequate fit, but RMSEA of .16 indicates unsatisfactory fit.  
+We then inspect why this might be, starting with the four assumptions we covered earlier.   
+
+**tau equivalence**   
+```{r}
+broom::tidy(neuroticism_fit) %>% 
+  filter(op == "=~")
+```
+We see that the factor loadings vary substantially, ranging from 0.50 to 0.81, suggesting a violation of tau equivalence. 
+
+
+We can also create a tau-equivalent model by fixing factor loading of all neuroticism item with 1. 
+```{r tau_equivalence}
+neuroticism_te <- 'N =~ 1*N1 + 1*N2+ 1*N3 + 1*N4 + 1*N5'
+neuroticism_te_fit <- lavaan::cfa(neuroticism_te, 
+                          data = big5, 
+                          std.lv=T, missing='direct', estimator='MLR')
+```
+
+We see that all items contribute to the neuroticism scale equally with an estimate of 1 (i.e., the value we fixed).  
+```{r}
+summary(neuroticism_te_fit)
+```
+
+When we compare our original congeneric model to the tau-equivalent model, we wee that AIC and BIC are lower for the original model. 
+```{r}
+anova(neuroticism_fit, neuroticism_te_fit)
+```
+
+
+**uncorrelated error**  
+```{r}
+residuals(neuroticism_fit, type = "cor")
+```
+We also see that the 3rd assumption of uncorrelated errors is violated, with the residuals of N3 and N4 correlated at $r$ = .12. 
+
+In such case, we can account for the correlated error term between N3 and N4 (which is correlated at $r$ = .12) and obtain $\omega$ total.
+```{r}
+neuroticism_ce_model <- '
+N =~ N1 + N2 + N3 + N4 + N5
+# free error covariance
+N3 ~~ N4'
+```
+
+```{r}
+neuroticism_ce_fit <- lavaan::cfa(neuroticism_ce_model, 
+                          data = big5, 
+                          std.lv=T, missing='direct', estimator='MLR')
+```
+
+In comparison to the original model, we see that the revised model that accounts for the error term fits the data better.   
+```{r}
+anova(neuroticism_fit, neuroticism_ce_fit)
+```
+
+
+
