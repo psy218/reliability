@@ -12,24 +12,30 @@ output:
     df_print: paged
     fig_width: 8
     fig_height: 5
+params:
+  demo: TRUE
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE)
-options(digits = 4, scipen = 999)
+# setup for rmarkdown document
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE, highlight = TRUE)
+# output specification: printing 3 digits w/o scientific notiation 
+options(digits = 3, scipen = 999)
+# setting random seed for bootstrapping; run the line below for reproducible results 
 set.seed(33333)
 ```
 
 ```{r}
-library(tidyverse)
-library(psych)
-library(lavaan)
+# packages needed for the current doc 
+library(tidyverse) # data wrangling 
+library(psych) # factor analysis, reliability 
+library(lavaan) # SEM 
 library(e1071) # kurtosis  
 ```
 
 
 # Data 
-I am using the data set from `psych()` package.   
+I am using the data set from `psych()` package, which contains scores on big 5 traits from 2,800 observations. Check their doc `?psych::bfi` for more details, incl. codebook.       
 ```{r rows.print = 10}
 (big5 = psych::bfi)
 ```
@@ -53,6 +59,13 @@ For an accurate estimation of Cronbach's alpha, four assumptions should be met:
 Does each item contribute equally to the total scale score?  
 
 Let's inspect standardized factor loadings (in the ML1 column).  
+
+```{r eval=params$demo, include=params$demo}
+select(big5, num_range("N", 1:5)) %>% 
+  psych::fa(nfactors = 1, fm = "ml") %>% 
+  psych::print.psych() 
+```
+
 ```{r}
 c("A", "C", "E", "N", "O") %>% 
   map(., ~{select(big5, num_range(., 1:5)) %>% 
@@ -92,6 +105,12 @@ We see a lot of items (e.g., all neuroticism items) are platykurtic, which may l
 ## **uncorrelated errors** {#uncor-errors}    
 Error terms need to be uncorrelated. Unaccounted correlated error terms lead to overestimatin of Cronbach's alpha (Gessaroli & Folske, 2002).  
 
+```{r eval=params$demo, include=params$demo}
+select(big5, num_range("N", 1:5)) %>% 
+  psych::fa(nfactors = 1, fm = "ml") %>% 
+  residuals
+```
+
 Let's inspect error terms for each trait.  
 ```{r}
 c("A", "C", "E", "N", "O") %>% 
@@ -124,6 +143,7 @@ McNeish (2018) recommends using alternative reliability coefficients that make f
 ### alpha  
 Calculating Cronbach's alpha for each trait by first reverse-scoring items[^1] that are negatively worded. We will be using `alpha()` function from `psych` package.    
 [^1]: Reverse-scored items include A1, C4, C5, E1, E2, O2, O5  
+
 ```{r}
 # creating a custom function that will automatically reverse score items, select items for each scale, and compute Cronbach's alpha.  
 cronbachs_alpha <- function(data, trait) {
@@ -136,14 +156,20 @@ cronbachs_alpha <- function(data, trait) {
     psych::alpha(check.keys = TRUE) # check.keys argument will automatically reverse-score items  
 }
 ```
+
+```{r eval=params$demo, include=params$demo}
+# only looking at neuroticism  
+cronbachs_alpha(big5, "N") 
+  
+```
+
 The estimates of Cronbach's alpha can be found under `std.alpha` column.  
 ```{r}
-c("A", "C", "E", "N", "O") %>% 
-  map(., ~cronbachs_alpha(big5, .)) %>%
-  map_dfr("total", .id = "trait") %>% 
-  # giving each row the name of the trait 
-  mutate(trait = c("A", "C", "E", "N", "O")) %>% 
-  select(trait, std.alpha)
+(alpha = c("A", "C", "E", "N", "O") %>% 
+   tibble(trait = .,
+          alpha = map_dbl(., ~cronbachs_alpha(big5, .) %>% 
+                    .$total %>% 
+                    .$raw_alpha) ))
 ```
 Using the rule of thumb (Nunnally, 1978), all but neuroticism have *inadequate* internal reliabilities.   
 ```{r eval = FALSE}
@@ -173,6 +199,21 @@ big5 %>%
 We get $\omega$ total of .81 with a 95% CI of [.80, 0.83] using the random seed of 33333[^2].   
 [^2]: 95% CI may be different if you are not using this seed.   
 
+
+```{r cache = TRUE}
+tictoc::tic()
+(omega_total = c("A", "C", "E", "N", "O") %>% 
+  tibble(trait = ., 
+  revelles_omega = map_dbl(., ~{select(big5, num_range(., 1:5)) %>% 
+  MBESS::ci.reliability(data = .,
+                        type = "omega",
+                        interval.type = "perc", # percentile bootstrap CI
+                        B = 100) %>% 
+      .$est})))
+tictoc::toc() 
+```
+
+
 ### Revelle's omega total   
 This is an extension of omega total with a rotation solution to a bifactor model with one superordinate factor and one minor factor.   
 
@@ -181,15 +222,32 @@ This is an extension of omega total with a rotation solution to a bifactor model
 # install.packages("GPArotation")
 # the following package is required for the rotation; uncomment the line above if you don't have the package installed. 
 library(GPArotation)
+```
 
+
+```{r eval=params$demo, include=params$demo}
 # We will only compute Revelle's omega total for neuroticism.  
 big5 %>% 
   select(num_range("N", 1:5)) %>% 
   psych::omega(plot = FALSE)
+# For neuroticism, we get Revelle's omega total of .85 and omega hierarchical is .73, which is lower. 
 ```
-We get Revelle's omega total of .85 and omega hierarchical is .73, which is lower. These two differ in the variances that count towards a reliability estimate; whereas Revelle's omega total accounts for the variances due to to *all* the factors (i.e., general and specific factors), omega hierarchical accounts for the general/superordinate factor without specific factor(s) that represent :irrelevant sources of variability" (see Savalei & Reise, 2019).    
+
+```{r}
+(revelles_omega = c("A", "C", "E", "N", "O") %>% 
+  tibble(trait = ., 
+  map_df(., ~{ select(big5, num_range(., 1:5)) %>% 
+      psych::omega(plot = FALSE) %>% 
+      # summary stats 
+      .$omega.group %>% 
+      # only the general group
+      slice(1)
+  })))
+```
+Revelle's omega total and omega hierarchical differ in the variances that count towards a reliability estimate; whereas Revelle's omega total accounts for the variances due to to *all* the factors (i.e., general and specific factors), omega hierarchical accounts for the general/superordinate factor without specific factor(s) that represent :irrelevant sources of variability" (see Savalei & Reise, 2019).    
+
 <br></br>
-The function offers an option to estimate polychoric covariance matrix, which will account for non-continuous items. 
+The function offers an option to estimate *polychoric covariance matrix*, which will account for non-continuous items. 
 ```{r}
  big5 %>% 
   select(num_range("N", 1:5)) %>% 
@@ -201,17 +259,27 @@ We see that omega estimates are higher when using polychoric covariance matrix; 
 ### Coefficient H    
 This is maximal reliability estimate for scales with *optimally weighted* items. 
 
-We first need to repeat the procedure we used to check the assumption of tau equivalence: conducting an exploratory factor analysis. We then use standardized loadings to compute Coefficient H.   
+We first need to repeat the procedure we used to check the assumption of tau equivalence: conducting an exploratory factor analysis. We then use standardized loadings to compute Coefficient H.
+```{r eval=params$demo, include=params$demo}
+select(big5, num_range("N", 1:5)) %>% 
+  psych::fa(nfactors = 1, fm = "ml") %>% 
+  loadings() %>% 
+  unclass() %>% 
+  as.data.frame() %>% 
+  # calculate Coefficient H 
+  summarize(coefficient_h = (1 + (sum( (ML1^2) / (1 - ML1^2) )^-1) )^-1)
+```
+
 ```{r}
-c("A", "C", "E", "N", "O") %>% 
+(coef_h = c("A", "C", "E", "N", "O") %>% 
   map_dfr(., ~{select(big5, num_range(., 1:5)) %>% 
       psych::fa(nfactors = 1, fm = "ml") %>% 
       loadings() %>% 
       unclass() %>% 
       as.data.frame() %>% 
       # calculate Coefficient H 
-      summarize(coefficient_h = (1 + (sum( (ML1^2) / (1 - ML1^2) )^-1) )^-1)}, .id = "traits") %>% 
-  mutate(traits = c("A", "C", "E", "N", "O"))
+      summarize(coefficient_h = (1 + (sum( (ML1^2) / (1 - ML1^2) )^-1) )^-1)}, .id = "trait") %>% 
+  mutate(trait = c("A", "C", "E", "N", "O")))
 ```
 
 ```{r}
@@ -233,7 +301,7 @@ We get $Coefficient H$ of .85 for neuroticism.
 ### Greatest lower bound 
 
 Compute the greatest lower bound with the polychoric matrix estimation.  
-```{r}
+```{r eval=params$demo, include=params$demo}
 big5 %>% 
   select(num_range("N", 1:5)) %>%
   # obtain polychoric correlation matrix 
@@ -243,7 +311,27 @@ big5 %>%
   # compute the greatest lower bound
   psych::glb.fa()
 ```
-We see that the greatest lower bound of .87 is higher than the alpha and omega estimates.  
+
+```{r}
+(glb = c("A", "C", "E", "N", "O") %>% 
+  tibble(
+    trait = .,
+    glb = map_dbl(., ~{select(big5, num_range(., 1:5)) %>%
+        # obtain polychoric correlation matrix 
+        psych::polychoric() %>% 
+        .$rho %>% 
+        data.frame() %>% 
+        # compute the greatest lower bound
+        psych::glb.fa() %>% 
+        .$glb})))
+```
+
+### Summary Table    
+```{r}
+list(alpha, omega_total, revelles_omega, coef_h, glb) %>% 
+  reduce(inner_join)
+```
+
 
 ## Better Modeling {#better-modeling}    
 Instead of using an alternative reliabiility coefficient, Savalei and Reise (2019) recommends better modeling: Careful inspection of underlying factor structure and selection of reliability coefficient based on the model.     
