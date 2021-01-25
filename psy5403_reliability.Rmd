@@ -79,6 +79,12 @@ The factor loadings under the ML1 column indicate a *congeneric model* (i.e., it
 One of the assumptions of Pearson covariance matrices is that all items are continuous. The violation of this assumption leads to the underestimation of Cronbach's alpha.    
 
 All items were rated on a 6-point Likert type scale, which does not meet the suggested cutoff of 7-point scale (Gadermann et al., 2012) to be treated as continuous. As such, the covariances can be estimated with a polychoric covariance matrix, which accommodates non-continuous items that are normally distributed.  
+
+```{r}
+big5 %>% 
+  summarize_at(vars(matches("N[1-5]")), list(min, max), na.rm = T)
+```
+
 <br></br>
 In addition to being continuous, items need to be normally distributed. We can inspect whether the items are normally distributed using `kurtosis()` and `skewness()` function from `e1071` package. 
 
@@ -169,15 +175,10 @@ The estimates of Cronbach's alpha can be found under `std.alpha` column.
    tibble(trait = .,
           alpha = map_dbl(., ~cronbachs_alpha(big5, .) %>% 
                     .$total %>% 
-                    .$raw_alpha) ))
+                    .$std.alpha) ))
 ```
 Using the rule of thumb (Nunnally, 1978), all but neuroticism have *inadequate* internal reliabilities.   
-```{r eval = FALSE}
-# For a practical example computing alpha for one scale, as opposed to 5 as shown above. 
-big5 %>% 
-  select(num_range("N", 1:5)) %>% 
-  psych::alpha(check.keys = TRUE)
-```
+
 
 
 ### Omega   
@@ -201,7 +202,7 @@ We get $\omega$ total of .81 with a 95% CI of [.80, 0.83] using the random seed 
 
 
 ```{r cache = TRUE}
-tictoc::tic()
+# tictoc::tic()
 (omega_total = c("A", "C", "E", "N", "O") %>% 
   tibble(trait = ., 
   revelles_omega = map_dbl(., ~{select(big5, num_range(., 1:5)) %>% 
@@ -210,7 +211,7 @@ tictoc::tic()
                         interval.type = "perc", # percentile bootstrap CI
                         B = 100) %>% 
       .$est})))
-tictoc::toc() 
+# tictoc::toc() 
 ```
 
 
@@ -368,9 +369,9 @@ broom::tidy(neuroticism_fit) %>%
 We see that the factor loadings vary substantially, ranging from 0.50 to 0.81, suggesting a violation of tau equivalence. 
 
 
-We can also create a tau-equivalent model by fixing factor loading of all neuroticism item with 1. 
+We can also create a tau-equivalent model by fixing factor loading of all neuroticism item with a parameter, *lam*. 
 ```{r tau_equivalence}
-neuroticism_te <- 'N =~ 1*N1 + 1*N2+ 1*N3 + 1*N4 + 1*N5'
+neuroticism_te <- 'N =~ lam*N1 + lam*N2+ lam*N3 + lam*N4 + lam*N5'
 neuroticism_te_fit <- lavaan::cfa(neuroticism_te, 
                           data = big5, 
                           std.lv=T, missing='direct', estimator='MLR')

@@ -2886,34 +2886,16 @@ I am using the data set from <code>psych()</code> package, which contains scores
 <p>For an accurate estimation of Cronbach’s alpha, four assumptions should be met:<br />
 1) <a href="#tau-equivalence"><strong>tau equivalence</strong></a><br />
 - all items of a scale should measure the same construct to the same degree of precision.<br />
-- Although the violation leads to <em>under</em>estimation of Cronbach’s alpha (Green &amp; Yang, 2009), whether the degree of underestimation is significant is debated (Savalei &amp; Reise, 2019).</p>
-<ol start="2" style="list-style-type: decimal">
-<li><a href="#continuous"><strong>normal distribution</strong></a><br />
-</li>
-</ol>
-<ul>
-<li>items need to be continuous and normally distributed.<br />
-</li>
-<li>The violation of continuous scale leads to <em>under</em>estimation of Cronbach’s alpha, whereas leptokurtic and platykurtic distributions lead to <em>under</em> and <em>over</em>estimation, respectively (Sheng &amp; Sheng, 2012).</li>
-</ul>
-<ol start="3" style="list-style-type: decimal">
-<li><a href="#uncor-errors"><strong>uncorrelted error terms</strong></a><br />
-</li>
-</ol>
-<ul>
-<li>error terms of items need to be uncorrelated.<br />
-</li>
-<li>Correlated error terms can lead to <em>under</em> and <em>over</em>estimation (Gessaroli &amp; Folske, 2002).</li>
-</ul>
-<ol start="4" style="list-style-type: decimal">
-<li><a href="#unidimension"><strong>unidimensionality</strong></a><br />
-</li>
-</ol>
-<ul>
-<li>all items need to measure the same construct.<br />
-</li>
-<li>Cronbach’s alpha does not measure the degree of unidimensionality; unidimensionality needs to verified prior to calculating Cronbach’s alpha.</li>
-</ul>
+- Although the violation leads to <em>under</em>estimation of Cronbach’s alpha (Green &amp; Yang, 2009), whether the degree of underestimation is significant is debated (Savalei &amp; Reise, 2019).<br />
+2) <a href="#continuous"><strong>normal distribution</strong></a><br />
+- items need to be continuous and normally distributed.<br />
+- The violation of continuous scale leads to <em>under</em>estimation of Cronbach’s alpha, whereas leptokurtic and platykurtic distributions lead to <em>under</em> and <em>over</em>estimation, respectively (Sheng &amp; Sheng, 2012).<br />
+3) <a href="#uncor-errors"><strong>uncorrelted error terms</strong></a><br />
+- error terms of items need to be uncorrelated.<br />
+- Correlated error terms can lead to <em>under</em> and <em>over</em>estimation (Gessaroli &amp; Folske, 2002).<br />
+4) <a href="#unidimension"><strong>unidimensionality</strong></a><br />
+- all items need to measure the same construct.<br />
+- Cronbach’s alpha does not measure the degree of unidimensionality; unidimensionality needs to verified prior to calculating Cronbach’s alpha.</p>
 <div id="tau-equivalence" class="section level2">
 <h2><span class="header-section-number">2.1</span> <strong>tau equivalence</strong></h2>
 <p>Does each item contribute equally to the total scale score?</p>
@@ -3166,8 +3148,13 @@ I am using the data set from <code>psych()</code> package, which contains scores
 <div id="continuous" class="section level2">
 <h2><span class="header-section-number">2.2</span> <strong>continuous items with normal distributions</strong></h2>
 <p>One of the assumptions of Pearson covariance matrices is that all items are continuous. The violation of this assumption leads to the underestimation of Cronbach’s alpha.</p>
-<p>All items were rated on a 6-point Likert type scale, which does not meet the suggested cutoff of 7-point scale (Gadermann et al., 2012) to be treated as continuous. As such, the covariances can be estimated with a polychoric covariance matrix, which accommodates non-continuous items that are normally distributed.<br />
-<br />
+<p>All items were rated on a 6-point Likert type scale, which does not meet the suggested cutoff of 7-point scale (Gadermann et al., 2012) to be treated as continuous. As such, the covariances can be estimated with a polychoric covariance matrix, which accommodates non-continuous items that are normally distributed.</p>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["N1_fn1"],"name":[1],"type":["int"],"align":["right"]},{"label":["N2_fn1"],"name":[2],"type":["int"],"align":["right"]},{"label":["N3_fn1"],"name":[3],"type":["int"],"align":["right"]},{"label":["N4_fn1"],"name":[4],"type":["int"],"align":["right"]},{"label":["N5_fn1"],"name":[5],"type":["int"],"align":["right"]},{"label":["N1_fn2"],"name":[6],"type":["int"],"align":["right"]},{"label":["N2_fn2"],"name":[7],"type":["int"],"align":["right"]},{"label":["N3_fn2"],"name":[8],"type":["int"],"align":["right"]},{"label":["N4_fn2"],"name":[9],"type":["int"],"align":["right"]},{"label":["N5_fn2"],"name":[10],"type":["int"],"align":["right"]}],"data":[{"1":"1","2":"1","3":"1","4":"1","5":"1","6":"6","7":"6","8":"6","9":"6","10":"6"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<p><br />
 In addition to being continuous, items need to be normally distributed. We can inspect whether the items are normally distributed using <code>kurtosis()</code> and <code>skewness()</code> function from <code>e1071</code> package.</p>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
@@ -3328,7 +3315,7 @@ The estimates of Cronbach’s alpha can be found under <code>std.alpha</code> co
 
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["trait"],"name":[1],"type":["chr"],"align":["left"]},{"label":["alpha"],"name":[2],"type":["dbl"],"align":["right"]}],"data":[{"1":"A","2":"0.703"},{"1":"C","2":"0.727"},{"1":"E","2":"0.762"},{"1":"N","2":"0.814"},{"1":"O","2":"0.600"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["trait"],"name":[1],"type":["chr"],"align":["left"]},{"label":["alpha"],"name":[2],"type":["dbl"],"align":["right"]}],"data":[{"1":"A","2":"0.713"},{"1":"C","2":"0.730"},{"1":"E","2":"0.762"},{"1":"N","2":"0.815"},{"1":"O","2":"0.607"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <p>Using the rule of thumb (Nunnally, 1978), all but neuroticism have <em>inadequate</em> internal reliabilities.</p>
@@ -3364,7 +3351,6 @@ The estimates of Cronbach’s alpha can be found under <code>std.alpha</code> co
 {"columns":[{"label":["trait"],"name":[1],"type":["chr"],"align":["left"]},{"label":["revelles_omega"],"name":[2],"type":["dbl"],"align":["right"]}],"data":[{"1":"A","2":"0.5613"},{"1":"C","2":"0.0160"},{"1":"E","2":"0.0152"},{"1":"N","2":"0.8134"},{"1":"O","2":"0.0254"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
-<pre><code>## 147.854 sec elapsed</code></pre>
 </div>
 <div id="revelles-omega-total" class="section level3">
 <h3><span class="header-section-number">3.1.3</span> Revelle’s omega total</h3>
@@ -3529,7 +3515,7 @@ We first need to repeat the procedure we used to check the assumption of tau equ
 <h3><span class="header-section-number">3.1.6</span> Summary Table</h3>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["trait"],"name":[1],"type":["chr"],"align":["left"]},{"label":["alpha"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["revelles_omega"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["total"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["general"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["group"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["coefficient_h"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["glb"],"name":[8],"type":["dbl"],"align":["right"]}],"data":[{"1":"A","2":"0.703","3":"0.5613","4":"0.757","5":"0.681","6":"0.0660","7":"0.764","8":"0.707"},{"1":"C","2":"0.727","3":"0.0160","4":"0.770","5":"0.614","6":"0.1458","7":"0.736","8":"0.402"},{"1":"E","2":"0.762","3":"0.0152","4":"0.795","5":"0.658","6":"0.1253","7":"0.778","8":"0.366"},{"1":"N","2":"0.814","3":"0.8134","4":"0.852","5":"0.729","6":"0.1170","7":"0.851","8":"0.874"},{"1":"O","2":"0.600","3":"0.0254","4":"0.666","5":"0.513","6":"0.0985","7":"0.651","8":"0.404"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["trait"],"name":[1],"type":["chr"],"align":["left"]},{"label":["alpha"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["revelles_omega"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["total"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["general"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["group"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["coefficient_h"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["glb"],"name":[8],"type":["dbl"],"align":["right"]}],"data":[{"1":"A","2":"0.713","3":"0.5613","4":"0.757","5":"0.681","6":"0.0660","7":"0.764","8":"0.707"},{"1":"C","2":"0.730","3":"0.0160","4":"0.770","5":"0.614","6":"0.1458","7":"0.736","8":"0.402"},{"1":"E","2":"0.762","3":"0.0152","4":"0.795","5":"0.658","6":"0.1253","7":"0.778","8":"0.366"},{"1":"N","2":"0.815","3":"0.8134","4":"0.852","5":"0.729","6":"0.1170","7":"0.851","8":"0.874"},{"1":"O","2":"0.607","3":"0.0254","4":"0.666","5":"0.513","6":"0.0985","7":"0.651","8":"0.404"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 </div>
@@ -3556,23 +3542,24 @@ We then inspect why this might be, starting with the four assumptions we covered
   </script>
 </div>
 <p>We see that the factor loadings vary substantially, ranging from 0.50 to 0.81, suggesting a violation of tau equivalence.</p>
-<p>We can also create a tau-equivalent model by fixing factor loading of all neuroticism item with 1.</p>
+<p>We can also create a tau-equivalent model by fixing factor loading of all neuroticism item with a parameter, <em>lam</em>.</p>
 <p>We see that all items contribute to the neuroticism scale equally with an estimate of 1 (i.e., the value we fixed).</p>
 <pre><code>## lavaan 0.6-7 ended normally after 20 iterations
 ## 
 ##   Estimator                                         ML
 ##   Optimization method                           NLMINB
-##   Number of free parameters                         10
+##   Number of free parameters                         15
+##   Number of equality constraints                     4
 ##                                                       
 ##   Number of observations                          2800
 ##   Number of missing patterns                        11
 ##                                                       
 ## Model Test User Model:
 ##                                                Standard      Robust
-##   Test Statistic                                647.677     596.892
-##   Degrees of freedom                                 10          10
+##   Test Statistic                                606.123     547.423
+##   Degrees of freedom                                  9           9
 ##   P-value (Chi-square)                            0.000       0.000
-##   Scaling correction factor                                   1.085
+##   Scaling correction factor                                   1.107
 ##        Yuan-Bentler correction (Mplus variant)                     
 ## 
 ## Parameter Estimates:
@@ -3584,33 +3571,33 @@ We then inspect why this might be, starting with the four assumptions we covered
 ## Latent Variables:
 ##                    Estimate  Std.Err  z-value  P(&gt;|z|)
 ##   N =~                                                
-##     N1                1.000                           
-##     N2                1.000                           
-##     N3                1.000                           
-##     N4                1.000                           
-##     N5                1.000                           
+##     N1       (lam)    1.110    0.016   70.021    0.000
+##     N2       (lam)    1.110    0.016   70.021    0.000
+##     N3       (lam)    1.110    0.016   70.021    0.000
+##     N4       (lam)    1.110    0.016   70.021    0.000
+##     N5       (lam)    1.110    0.016   70.021    0.000
 ## 
 ## Intercepts:
 ##                    Estimate  Std.Err  z-value  P(&gt;|z|)
-##    .N1                2.931    0.030   98.565    0.000
-##    .N2                3.508    0.029  121.424    0.000
-##    .N3                3.217    0.030  106.126    0.000
-##    .N4                3.185    0.030  106.885    0.000
-##    .N5                2.969    0.031   96.642    0.000
+##    .N1                2.932    0.030   98.563    0.000
+##    .N2                3.508    0.029  121.429    0.000
+##    .N3                3.217    0.030  106.129    0.000
+##    .N4                3.185    0.030  106.882    0.000
+##    .N5                2.969    0.031   96.636    0.000
 ##     N                 0.000                           
 ## 
 ## Variances:
 ##                    Estimate  Std.Err  z-value  P(&gt;|z|)
-##    .N1                1.052    0.036   29.465    0.000
-##    .N2                1.006    0.035   28.517    0.000
-##    .N3                1.190    0.035   34.234    0.000
-##    .N4                1.556    0.048   32.567    0.000
-##    .N5                1.837    0.055   33.484    0.000
+##    .N1                1.021    0.038   27.173    0.000
+##    .N2                0.979    0.037   26.413    0.000
+##    .N3                1.170    0.036   32.383    0.000
+##    .N4                1.569    0.049   31.716    0.000
+##    .N5                1.856    0.057   32.706    0.000
 ##     N                 1.000</code></pre>
 When we compare our original congeneric model to the tau-equivalent model, we wee that AIC and BIC are lower for the original model.
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Df"],"name":[1],"type":["int"],"align":["right"]},{"label":["AIC"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["BIC"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["Chisq"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["Chisq diff"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["Df diff"],"name":[6],"type":["int"],"align":["right"]},{"label":["Pr(>Chisq)"],"name":[7],"type":["dbl"],"align":["right"]}],"data":[{"1":"5","2":"47567","3":"47656","4":"373","5":"NA","6":"NA","7":"NA","_rn_":"neuroticism_fit"},{"1":"10","2":"47833","3":"47892","4":"648","5":"271","6":"5","7":"0.0000000000000000000000000000000000000000000000000000000178","_rn_":"neuroticism_te_fit"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Df"],"name":[1],"type":["int"],"align":["right"]},{"label":["AIC"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["BIC"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["Chisq"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["Chisq diff"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["Df diff"],"name":[6],"type":["int"],"align":["right"]},{"label":["Pr(>Chisq)"],"name":[7],"type":["dbl"],"align":["right"]}],"data":[{"1":"5","2":"47567","3":"47656","4":"373","5":"NA","6":"NA","7":"NA","_rn_":"neuroticism_fit"},{"1":"9","2":"47793","3":"47858","4":"606","5":"223","6":"4","7":"0.0000000000000000000000000000000000000000000000452","_rn_":"neuroticism_te_fit"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <p><strong>uncorrelated error</strong></p>

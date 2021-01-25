@@ -1,0 +1,295 @@
+---
+title: "R syntax to accomany Which Omega is Right?"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+This .rmd file provides all syntax described in the article "Your coefficient alpha is probably wrong, but which coefficient omega is right? A tutorial on using R to obtain better reliability estimates" by David B. Flora.
+
+This document assumes some prior familiarity with R, particularly how to install and load packages and how to import data files. We recommend using RStudio as an environment for all R sessions.
+
+***
+
+**Begin by installing (if necessary) and loading all packages needed for this tutorial:**
+```{r}
+#install.packages("lavaan")
+#install.packages("semTools")
+#install.packages("psych")
+#install.packages("MBESS")
+
+library(lavaan)
+library(semTools)
+library(psych)
+library(MBESS)
+```
+
+***
+
+### Obtaining omega-u from a one-factor model for the Openness scale.
+
+**Download the open.csv data from the web to create a data frame called "open", or import the open.csv data file if you have already saved it to the same directory as this .rmd file. These data are from the "bfi" dataset in the psych package. Note that in the the "open" data file used below, items 2 and 5 are already reverse-coded.**   
+```{r}
+
+open <- read.csv("https://osf.io/53wdz/download")
+
+#OR
+#open <- read.csv("open.csv")
+
+```
+      
+**Specify the one-factor model for the Openness items (i.e., congeneric model):**
+```{r}
+mod1f <- 'open =~ O1 + O2+ O3 + O4 + O5'
+```
+
+**Estimate the one-factor model:**
+```{r}
+fit1f <- cfa(mod1f, data=open, std.lv=T, missing='direct', estimator='MLR')
+```
+
+**Obtain the results summary:**
+```{r}
+summary(fit1f, fit.measures=T)
+```
+
+**As reported in the article, the output above indicates that the model does not fit the data very well. One reason is that there is a notable residual correlation (.097) between items O2 and O5, which can be seen by running the residuals command on the fitted model:**
+
+```{r}
+residuals(fit1f, type="cor")
+```
+
+**Despite that the model fit is not great, for illustrative reasons we will continue to estimate omega based on this one-factor model. (Syntax to account for the large error correlation between O2 and O5 and thus obtain a better omega estimate is given later in this document).**
+
+**Obtain coefficient omega as an estimate of the reliability of the opennness scale total score as a measure of the 'open' factor:**
+```{r}
+reliability(fit1f)
+```
+
+**Call the ci.reliability function to obtain a bootstrap 95% CI for omega. Note that for this tutorial, the number of bootstrap samples is set to only 100 (the default number of samples is 10,000, which may take a long time to run). Also, due to random sampling variability inherent to the bootstrap procedure, the resulting CI from the code below may not exactly match the CI reported in the actual article:**
+
+```{r}
+ci.reliability(data=open, type = "omega", interval.type = "perc", B = 100)
+```
+
+**It is also possible to calculate omega-u directly within lavaan as a defined parameter. To do so, it is necessary to assign a name to each factor loading and error variance in the model specifiction; below, l1 through l5 are the names of the factor loadings, and e1 through e5 are the names of the error variances. Then the formula for the defined omega parameter is given following the " := " operator**
+
+```{r}
+open1f <- 'open=~l1*O1+l2*O2+l3*O3+l4*O4+l5*O5
+           O1 ~~ e1*O1
+           O2 ~~ e2*O2
+           O3 ~~ e3*O3
+           O4 ~~ e4*O4
+           O5 ~~ e5*O5
+omega := ((l1+l2+l3+l4+l5)^2)
+/ ((l1+l2+l3+l4+l5)^2 +
+     (e1+e2+e3+e4+e5))'
+
+```
+
+**Fit the model using the cfa() function as above, then the estimate of omega in the results summary matches the omega estimate returned by the reliability() function:** 
+
+```{r}
+fit1f <- cfa(open1f, data=open, missing="direct", estimator="MLR", std.lv=T)
+summary(fit1f, fit.measures=T)
+```
+
+
+**The code below specifies a tau-equivalence model for the Openness items. By assigning the same name ("lam") to each factor loading coefficient, those factor loadings will be constrained to be equal:**
+```{r}
+modtaueq <- 'open =~ lam*O1 + lam*O2+ lam*O3 + lam*O4 + lam*O5'
+fitte <- cfa(modtaueq, data=open, std.lv=T, missing='direct', estimator='MLR')
+```
+
+**Check the results to see that the factor loading estimates are in fact equal:** 
+
+```{r}
+summary(fitte, fit.measures=T)
+```
+
+**Next, results from the anova() function show that the original congeneric model fits better than the tau-equivalence model. Because the sample size is so large, the chi-square difference test is easily significant. But the AIC and BIC indices are also lower for the congeneric model, indicating that the congeneric model is more appropriate for these data then the tau-equivalence model:**
+
+```{r}
+anova(fit1f, fitte)
+```
+
+### Incorporating the error covariance in the one-factor model for the Openness scale to obtain omega-u from a better-fitting model.
+
+**Re-specify the one-factor model for the Openness items, but now include a new line to specify the free error covariance between items O2 and O5 using the ~~ operator:**
+```{r}
+mod1fR <- 'open =~ O1 + O2+ O3 + O4 + O5
+                  O2 ~~ O5'
+```
+
+**Estimate the revised model and obtain the results summary:**
+```{r}
+fit1fR <- cfa(mod1fR, data=open, std.lv=T, missing='direct', estimator='MLR')
+summary(fit1fR, fit.measures=T)
+```
+
+**One use the anova() function to see that the revised model fits better then the original congeneric model:**
+
+```{r}
+anova(fit1f, fit1fR)
+```
+
+**Obtain an updated coefficient omega that correctly accounts for the error covariance:**
+```{r}
+reliability(fit1fR)
+```
+
+**As above, an updated omega can be calculated directly within the lavaan syntax as a defined parameter. The new syntax below includes a formula for omega that accounts for the error covariance:**
+
+```{r}
+open1fR <- 'open=~l1*O1+l2*O2+l3*O3+l4*O4+l5*O5
+           O1 ~~ e1*O1
+           O2 ~~ e2*O2
+           O3 ~~ e3*O3
+           O4 ~~ e4*O4
+           O5 ~~ e5*O5
+           O2 ~~ r*O5
+omega := ((l1+l2+l3+l4+l5)^2)
+/ ((l1+l2+l3+l4+l5)^2 +
+     (e1+e2+e3+e4+e5)+2*r)'
+
+```
+
+**Fit the model using the cfa() function as above, then the estimate of omega in the results summary matches the omega estimate returned by the reliability() function:** 
+
+```{r}
+fit1fR <- cfa(open1fR, data=open, missing="direct", estimator="MLR", std.lv=T)
+summary(fit1fR, fit.measures=T)
+```
+
+***
+
+### Obtaining omega-u-cat from a one-factor model for the Psychoticism scale.
+
+**Download the potic.csv data from the web to create a data frame called 'potic', or import the potic.csv data file if you have already saved it to the same directory as this .rmd file.**   
+```{r}
+
+potic <- read.csv("https://osf.io/atqc6/download")
+
+#OR
+#potic <- read.csv("potic.csv")
+
+```
+      
+**Specify the one-factor model for the Psychoticism items (i.e., congeneric model):**
+```{r}
+mod1f <- 'psyctcsm =~ DDP1 + DDP2 + DDP3 + DDP4'
+```
+
+**Estimate the one-factor model; note that the 'ordered' option is used to indicate that all items are ordered, categorical:**
+```{r}
+fit1f <- cfa(mod1f, data=potic, std.lv=T, ordered = T)
+```
+
+**Obtain the results summary:**
+```{r}
+summary(fit1f, fit.measures=T)
+```
+
+**Obtain omega-u-cat as an estimate of the reliability of the total score for the Psychotcism items as a measure of the 'psyctcsm' factor:**
+```{r}
+reliability(fit1f)
+```
+
+**Although the message in red font in the output above indicates that alpha is calculated based on polychoric correlations, rest assured that the omega estimates are also omega-u-cat estimates obtained by fitting the one-factor model to polychoric correlations. The purpose of the message is to prevent confusion about the difference between alpha = .77 for this scale and ordinal alpha = .80, as described in the article.** 
+
+**Call the ci.reliability function to obtain a bootstrap 95% CI for omega. Again, the number of bootstrap samples is set to only 100 (the default number of samples is 10,000, which may take a long time to run). Also, due to random sampling variability inherent to the bootstrap procedure, the resulting CI from the code below may not exactly match the CI reported in the actual article:**
+
+```{r}
+ci.reliability(data=potic, type = "categorical", interval.type = "perc", B = 100)
+```
+
+### Obtaining omega-h from a bifactor model for the Psychological Cost Scale
+
+**Download the pcs.csv data from the web to create a data frame called 'pcs' or import the pcs.csv data file if you have already saved it to the same directory as this .rmd file **   
+```{r}
+pcs <- read.csv("https://osf.io/xd2tu/download")
+
+#OR
+#pcs <- read.csv("pcs.csv")
+```
+      
+**Specify and estimate the bifactor model for the PCS items:**
+```{r}
+modBf <- 'gen =~ TE1 + TE2 + TE3 + TE4 + TE5 + OE1 + OE2 + OE3 + OE4
+              + LVA1 + LVA2 + LVA3 + LVA4 + EM1 + EM2 + EM3 + EM4 + EM5 + EM6
+            s1 =~ TE1 + TE2 + TE3 + TE4 + TE5 
+            s2 =~ OE1 + OE2 + OE3 + OE4
+            s3 =~ LVA1 + LVA2 + LVA3 + LVA4
+            s4 =~ EM1 + EM2 + EM3 + EM4 + EM5 + EM6
+                        '
+fitBf <- cfa(modBf, data=pcs, std.lv=T, estimator='MLR', orthogonal=T)
+summary(fitBf, fit.measures=T)
+```
+
+**Obtain omega-h as for the PCS total score as a measure of a general 'psychological cost' construct:**
+```{r}
+reliability(fitBf)
+```
+
+
+***
+
+### Obtaining omega-ho from a higher-order model for the Psychological Cost Scale
+
+**This analysis uses the same pcs data frame used above. **   
+
+**Specify the higher-order factor model for the PCS items:**
+```{r}
+homod <- 'TE =~ TE1 + TE2 + TE3 + TE4 + TE5 
+      OE =~ OE1 + OE2 + OE3 + OE4
+      LV =~ LVA1 + LVA2 + LVA3 + LVA4
+      EM =~ EM1 + EM2 + EM3 + EM4 + EM5 + EM6
+      cost =~ TE + OE + LV + EM'
+```
+
+**Estimate the model and get the results:**
+```{r}
+fitHo <- cfa(homod, data=pcs, std.lv=T, estimator='MLM')
+summary(fitHo, fit.measures=T)
+```
+
+**Obtain omega-ho for the PCS total score as a measure of the 'psychological cost' higher-order factor:**
+```{r}
+reliabilityL2(fitHo, 'cost')
+```
+
+**Obtain omega estimates for the subscale scores as measures of the lower-order factors:**
+```{r}
+reliability(fitHo)
+```
+
+***
+
+### Obtaining omega-h and omega-h-ss from a bifactor model for the Psychological Cost Scale
+
+**Specify and estimate the bifactor model for the PCS items:**
+```{r}
+modBf <- 'gen =~ TE1 + TE2 + TE3 + TE4 + TE5 + OE1 + OE2 + OE3 + OE4
+              + LVA1 + LVA2 + LVA3 + LVA4 + EM1 + EM2 + EM3 + EM4 + EM5 + EM6
+            s1 =~ TE1 + TE2 + TE3 + TE4 + TE5 
+            s2 =~ OE1 + OE2 + OE3 + OE4
+            s3 =~ LVA1 + LVA2 + LVA3 + LVA4
+            s4 =~ EM1 + EM2 + EM3 + EM4 + EM5 + EM6
+                        '
+fitBf <- cfa(modBf, data=pcs, std.lv=T, estimator='MLR', orthogonal=T)
+summary(fitBf, fit.measures=T)
+```
+
+**Obtain omega-h-ss for the PCS subscale scores as measures of constructs orthogonal to the general factor, and omega-h as for the PCS total score as a measure of a general 'psychological cost' construct:**
+```{r}
+reliability(fitBf)
+```
+
+***
+
+### Using the psych package to calculate omega estimates
+
+**Use the 'omega' function to estimate omega-h based on an exploratory bifactor model of the PCS items (this bifactor model is based on the Schmid-Leiman transformation, and so the resulting omega-h is equivalent to omega-ho obtained from an exploratory higher-order model):*
+```{r}
+omega(pcs, nfactors = 4, plot = F)
+```
